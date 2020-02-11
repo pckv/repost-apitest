@@ -86,6 +86,10 @@ def test_everything(url: str):
     print('Test get resub_user1')
     test(get, f'/resubs/{resub_user1.name}', status=200, check=resub_user1.compare)
 
+    print('Test resub_user1 in get user1 resubs')
+    resubs = test(get, f'/users/{user1.username}/resubs', status=200)
+    assert any(resub_user1.compare(resub) for resub in resubs)
+
     print('Test edit nonexistent resub description as user1')
     test(patch, f'/resubs/{Resub(owner_username=user1.username).name}', status=404, token=user1_token,
          json=resub_user1.edit(description='Nonexistent description', apply=False), skip_token_test=True)
@@ -122,3 +126,7 @@ def test_everything(url: str):
     print('Test edit resub_user1 description as user2 when user2 is owner')
     test(patch, f'/resubs/{resub_user1.name}', status=200, token=user2_token, check=resub_user1.compare,
          json=resub_user1.edit(description='User2 description 2'))
+
+    print('Test resub_user1 in get user2 resubs when user2 is owner')
+    resubs = test(get, f'/users/{user2.username}/resubs', status=200)
+    assert any(resub_user1.compare(resub) for resub in resubs)
