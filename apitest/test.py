@@ -1,22 +1,6 @@
-import secrets
-from dataclasses import dataclass, field
-from functools import partial
+from requests import get, post, patch
 
-from requests import get, post
-
-
-@dataclass
-class User:
-    username: str = field(default_factory=partial(secrets.token_hex, 8))
-    password: str = field(default_factory=partial(secrets.token_hex, 8))
-    bio: str = None
-    avatar_url: str = None
-
-    @property
-    def create(self):
-        return {'username': self.username, 'password': self.password}
-
-    login = create
+from apitest.schemas import User
 
 
 def test_everything(url: str):
@@ -35,8 +19,8 @@ def test_everything(url: str):
     test(get, f'/api/users/{user1.username}', status=404)
 
     print('Test create user1')
-    user1_json = test(post, '/api/users', status=201, json=user1.create)
-    assert user1.username == user1_json['username']
+    response = test(post, '/api/users', status=201, json=user1.create)
+    assert user1.username == response['username']
 
     print('Test create user1 with same username')
     test(post, '/api/users', status=400, json=user1.create)
@@ -52,12 +36,31 @@ def test_everything(url: str):
     assert 'access_token' in user1_token
 
     print('Test get user1')
-    user1_json = test(get, f'/api/users/{user1.username}', status=200)
-    assert user1.username == user1_json['username']
+    response = test(get, f'/api/users/{user1.username}', status=200)
+    assert user1.username == response['username']
 
     print('Test get current user without authorization')
-    test(get, f'/api/users/me', status=401)
+    test(get, '/api/users/me', status=401)
 
     print('Test get current user with user1 token')
-    user1_json = test(get, f'/api/users/me', token=user1_token, status=200)
-    assert user1.username == user1_json['username']
+    response = test(get, '/api/users/me', token=user1_token, status=200)
+    assert user1.username == response['username']
+
+    print('Test edit current user without authorization')
+    test(patch, '/api/users/me', status=401, json=user1.edit(bio='Unchanged bio'))
+
+    print('Test edit current user bio only')
+    response = test(patch, '/api/users/me', token=user1_token, status=200, json=user1.edit(bio='Custom bio'))
+    assert user1.bio == response['bio']
+    assert user1.avatar_url == response['avatar_url']
+
+    print('Test edit current user avatar_url only')
+    response = test(patch, '/api/users/me', token=user1_token, status=200, json=user1.edit(avatar_url='Custom url'))
+    assert user1.bio == response['bio']
+    assert user1.avatar_url == response['avatar_url']
+
+    print('Test edit current user bio and avatar_url')
+    response = test(patch, '/api/users/me', token=user1_token, status=200,
+                    json=user1.edit(bio='Custom bio 2', avatar_url='Custom url 2'))
+    assert user1.bio == response['bio']
+    assert user1.avatar_url == response['avatar_url']
