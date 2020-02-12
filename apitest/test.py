@@ -1,6 +1,8 @@
+from copy import copy
+
 from requests import get, post, patch
 
-from apitest.schemas import User, Resub
+from apitest.schemas import User, Resub, Post
 
 
 def test_everything(url: str):
@@ -68,39 +70,39 @@ def test_everything(url: str):
     response = test(get, '/resubs', status=200)
     assert type(response) is list
 
-    resub_user1 = Resub(owner_username=user1.username)
+    resub1 = Resub(owner_username=user1.username)
 
-    print('Test get resub_user1 before creation')
-    test(get, f'/resubs/{resub_user1.name}', status=404)
+    print('Test get resub1 before creation')
+    test(get, f'/resubs/{resub1.name}', status=404)
 
-    print('Test create resub_user1')
-    test(post, '/resubs', status=201, token=user1_token, compare=resub_user1, json=resub_user1.create)
+    print('Test create resub1')
+    test(post, '/resubs', status=201, token=user1_token, compare=resub1, json=resub1.create)
 
-    print('Test create resub_user1 with same name')
-    test(post, '/resubs', status=400, token=user1_token, compare=resub_user1, json=resub_user1.create)
+    print('Test create resub1 with same name')
+    test(post, '/resubs', status=400, token=user1_token, compare=resub1, json=resub1.create)
 
-    print('Test resub_user1 in get resubs')
+    print('Test resub1 in get resubs')
     resubs = test(get, '/resubs', status=200)
-    assert any(resub_user1.compare(resub) for resub in resubs)
+    assert any(resub1.compare(resub) for resub in resubs)
 
-    print('Test get resub_user1')
-    test(get, f'/resubs/{resub_user1.name}', status=200, compare=resub_user1)
+    print('Test get resub1')
+    test(get, f'/resubs/{resub1.name}', status=200, compare=resub1)
 
-    print('Test resub_user1 in get user1 resubs')
+    print('Test resub1 in get user1 resubs')
     resubs = test(get, f'/users/{user1.username}/resubs', status=200)
-    assert any(resub_user1.compare(resub) for resub in resubs)
+    assert any(resub1.compare(resub) for resub in resubs)
 
     print('Test edit nonexistent resub description as user1')
     test(patch, f'/resubs/{Resub(owner_username=user1.username).name}', status=404, token=user1_token,
-         json=resub_user1.edit(description='Nonexistent description', apply=False), skip_token_test=True)
+         json=resub1.edit(description='Nonexistent description', apply=False), skip_token_test=True)
 
-    print('Test edit resub_user1 description as user1')
-    test(patch, f'/resubs/{resub_user1.name}', status=200, token=user1_token, compare=resub_user1,
-         json=resub_user1.edit(description='User1 description'))
+    print('Test edit resub1 description as user1')
+    test(patch, f'/resubs/{resub1.name}', status=200, token=user1_token, compare=resub1,
+         json=resub1.edit(description='User1 description'))
 
-    print('Test transfer resub_user1 ownership to nonexistent user')
-    test(patch, f'/resubs/{resub_user1.name}', status=404, token=user1_token,
-         json=resub_user1.edit(new_owner_username=User().username, apply=False))
+    print('Test transfer resub1 ownership to nonexistent user')
+    test(patch, f'/resubs/{resub1.name}', status=404, token=user1_token,
+         json=resub1.edit(new_owner_username=User().username, apply=False))
 
     user2 = User()
 
@@ -111,22 +113,70 @@ def test_everything(url: str):
     user2_token = test(post, '/auth/token', status=200, data=user2.login)
     assert 'access_token' in user2_token
 
-    print('Test edit resub_user1 description as user2')
-    test(patch, f'/resubs/{resub_user1.name}', status=403, token=user2_token,
-         json=resub_user1.edit(description='User2 description', apply=False))
+    print('Test edit resub1 description as user2')
+    test(patch, f'/resubs/{resub1.name}', status=403, token=user2_token,
+         json=resub1.edit(description='User2 description', apply=False))
 
-    print('Test transfer resub_user1 ownership to user2')
-    test(patch, f'/resubs/{resub_user1.name}', status=200, token=user1_token, compare=resub_user1,
-         json=resub_user1.edit(new_owner_username=user2.username))
+    print('Test transfer resub1 ownership to user2')
+    test(patch, f'/resubs/{resub1.name}', status=200, token=user1_token, compare=resub1,
+         json=resub1.edit(new_owner_username=user2.username))
 
-    print('Test edit resub_user1 description as user1 when user2 is owner')
-    test(patch, f'/resubs/{resub_user1.name}', status=403, token=user1_token,
-         json=resub_user1.edit(description='User1 description 2', apply=False))
+    print('Test edit resub1 description as user1 when user2 is owner')
+    test(patch, f'/resubs/{resub1.name}', status=403, token=user1_token,
+         json=resub1.edit(description='User1 description 2', apply=False))
 
-    print('Test edit resub_user1 description as user2 when user2 is owner')
-    test(patch, f'/resubs/{resub_user1.name}', status=200, token=user2_token, compare=resub_user1,
-         json=resub_user1.edit(description='User2 description 2'))
+    print('Test edit resub1 description as user2 when user2 is owner')
+    test(patch, f'/resubs/{resub1.name}', status=200, token=user2_token, compare=resub1,
+         json=resub1.edit(description='User2 description 2'))
 
-    print('Test resub_user1 in get user2 resubs when user2 is owner')
+    print('Test resub1 in get user2 resubs when user2 is owner')
     resubs = test(get, f'/users/{user2.username}/resubs', status=200)
-    assert any(resub_user1.compare(resub) for resub in resubs)
+    assert any(resub1.compare(resub) for resub in resubs)
+
+    print('Test get posts in resub1 is list')
+    posts = test(get, f'/resubs/{resub1.name}/posts', status=200)
+    assert type(posts) is list
+
+    print('Test get posts in nonexistent resub')
+    test(get, f'/resubs/{Resub(owner_username=user1.username).name}/posts', status=404)
+
+    post1 = Post(author_username=user1.username, parent_resub_name=resub1.name)
+
+    print('Test create post in resub1 as user1')
+    test(post, f'/resubs/{resub1.name}/posts', status=201, token=user1_token, compare=post1, json=post1.create)
+
+    post1_copy = copy(post1)
+
+    print('Test create same post in resub1 as user1')
+    test(post, f'/resubs/{resub1.name}/posts', status=201, token=user1_token, compare=post1_copy,
+         json=post1_copy.create)
+
+    print('Test get posts in resub1 has both post1')
+    posts = test(get, f'/resubs/{resub1.name}/posts', status=200)
+    assert any(post1.compare(p) for p in posts)
+    assert any(post1_copy.compare(p) for p in posts)
+
+    print('Test get nonexistent post in resub1')
+    test(get, f'/resubs/{resub1.name}/posts/9999999999', status=404)
+
+    print('Test get post1 in resub1')
+    test(get, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, compare=post1)
+
+    print('Test get second post1 in resub1')
+    test(get, f'/resubs/{resub1.name}/posts/{post1_copy.id}', status=200, compare=post1_copy)
+
+    print('Test user1 edit post1 title')
+    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user1_token, compare=post1,
+         json=post1.edit(title='Custom title'))
+
+    print('Test user1 add content to post1')
+    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user1_token, compare=post1,
+         json=post1.edit(content='Custom content'))
+
+    print('Test user1 add url to post1 and remove content')
+    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user1_token, compare=post1,
+         json=post1.edit(content=None, url='Custom url'))
+
+    print('Test user2 edit post1 title')
+    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=403, token=user2_token,
+         json=post1.edit(title='User2 title', apply=False))
