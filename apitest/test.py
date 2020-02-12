@@ -2,21 +2,23 @@ from copy import copy
 
 from requests import get, post, patch
 
-from apitest.schemas import User, Resub, Post
+from apitest.schemas import User, Resub, Post, Comment
 
 
 def test_everything(url: str):
     def test(method, endpoint: str, *, token=None, status: int, compare=None, skip_token_test: bool = False, **kwargs):
+        error_prefix = f'{method.__name__.upper()} {endpoint}'
+
         headers = {}
         if token:
             headers['Authorization'] = 'Bearer ' + token['access_token']
 
         r = method(f'{url}/api{endpoint}', headers=headers, **kwargs)
-        assert r.status_code == status, f'{endpoint}: Expected {status}, got {r.status_code}\n{r.text}'
+        assert r.status_code == status, f'{error_prefix}\nGot: {r.status_code}\nExpected: {status}\nResponse: {r.text}'
         obj = r.json()
 
         if compare:
-            assert compare.compare(obj), f'{endpoint}: Failed object check, got:\n{obj}\nExpected:\n{compare}'
+            assert compare.compare(obj), f'{error_prefix} Failed object check:\nGot: {obj}\nExpected: {compare}'
 
         # Do extra authorization tests when token is provided
         if token and not skip_token_test:
@@ -28,16 +30,23 @@ def test_everything(url: str):
 
         return obj
 
+    # NOTE:
+    # some endpoints add a / at the end. This is because root endpoints
+    # in FastAPI require this at the end. The server should redirect
+    # posts without the / to the endpoint with it, but future behaviour
+    # should perhaps be considered to allow calls to endpoints with no
+    # trailing /
+
     user1 = User()
 
     print('Test get user1 before creation')
     test(get, f'/users/{user1.username}', status=404)
 
     print('Test create user1')
-    test(post, '/users', status=201, compare=user1, json=user1.create)
+    test(post, '/users/', status=201, compare=user1, json=user1.create)
 
     print('Test create user1 with same username')
-    test(post, '/users', status=400, json=user1.create)
+    test(post, '/users/', status=400, json=user1.create)
 
     print('Test login nonexistent user')
     test(post, '/auth/token', status=401, data=User().login)
@@ -67,7 +76,7 @@ def test_everything(url: str):
          json=user1.edit(bio='Custom bio 2', avatar_url='Custom url 2'))
 
     print('Test get resubs is list')
-    response = test(get, '/resubs', status=200)
+    response = test(get, '/resubs/', status=200)
     assert type(response) is list
 
     resub1 = Resub(owner_username=user1.username)
@@ -76,19 +85,19 @@ def test_everything(url: str):
     test(get, f'/resubs/{resub1.name}', status=404)
 
     print('Test create resub1')
-    test(post, '/resubs', status=201, token=user1_token, compare=resub1, json=resub1.create)
+    test(post, '/resubs/', status=201, token=user1_token, compare=resub1, json=resub1.create)
 
     print('Test create resub1 with same name')
-    test(post, '/resubs', status=400, token=user1_token, compare=resub1, json=resub1.create)
+    test(post, '/resubs/', status=400, token=user1_token, compare=resub1, json=resub1.create)
 
     print('Test resub1 in get resubs')
-    resubs = test(get, '/resubs', status=200)
+    resubs = test(get, '/resubs/', status=200)
     assert any(resub1.compare(resub) for resub in resubs)
 
     print('Test get resub1')
     test(get, f'/resubs/{resub1.name}', status=200, compare=resub1)
 
-    print('Test resub1 in get user1 resubs')
+    print('Test get user1 resubs has resub1')
     resubs = test(get, f'/users/{user1.username}/resubs', status=200)
     assert any(resub1.compare(resub) for resub in resubs)
 
@@ -107,7 +116,7 @@ def test_everything(url: str):
     user2 = User()
 
     print('Test create user2')
-    test(post, '/users', status=201, compare=user2, json=user2.create)
+    test(post, '/users/', status=201, compare=user2, json=user2.create)
 
     print('Test login user2')
     user2_token = test(post, '/auth/token', status=200, data=user2.login)
@@ -129,32 +138,37 @@ def test_everything(url: str):
     test(patch, f'/resubs/{resub1.name}', status=200, token=user2_token, compare=resub1,
          json=resub1.edit(description='User2 description 2'))
 
-    print('Test resub1 in get user2 resubs when user2 is owner')
+    print('Test get user2 resubs has resub1 when user2 is owner')
     resubs = test(get, f'/users/{user2.username}/resubs', status=200)
     assert any(resub1.compare(resub) for resub in resubs)
 
     print('Test get posts in resub1 is list')
-    posts = test(get, f'/resubs/{resub1.name}/posts', status=200)
+    posts = test(get, f'/resubs/{resub1.name}/posts/', status=200)
     assert type(posts) is list
 
     print('Test get posts in nonexistent resub')
-    test(get, f'/resubs/{Resub(owner_username=user1.username).name}/posts', status=404)
+    test(get, f'/resubs/{Resub(owner_username=user1.username).name}/posts/', status=404)
 
     post1 = Post(author_username=user1.username, parent_resub_name=resub1.name)
 
     print('Test create post in resub1 as user1')
-    test(post, f'/resubs/{resub1.name}/posts', status=201, token=user1_token, compare=post1, json=post1.create)
+    test(post, f'/resubs/{resub1.name}/posts/', status=201, token=user1_token, compare=post1, json=post1.create)
 
     post1_copy = copy(post1)
 
     print('Test create same post in resub1 as user1')
-    test(post, f'/resubs/{resub1.name}/posts', status=201, token=user1_token, compare=post1_copy,
+    test(post, f'/resubs/{resub1.name}/posts/', status=201, token=user1_token, compare=post1_copy,
          json=post1_copy.create)
 
     print('Test get posts in resub1 has both post1')
-    posts = test(get, f'/resubs/{resub1.name}/posts', status=200)
+    posts = test(get, f'/resubs/{resub1.name}/posts/', status=200)
     assert any(post1.compare(p) for p in posts)
     assert any(post1_copy.compare(p) for p in posts)
+
+    post2 = Post(author_username=user2.username, parent_resub_name=resub1.name)
+
+    print('Test create post in resub1 as user2')
+    test(post, f'/resubs/{resub1.name}/posts/', status=201, token=user2_token, compare=post2, json=post2.create)
 
     print('Test get nonexistent post in resub1')
     test(get, f'/resubs/{resub1.name}/posts/9999999999', status=404)
@@ -177,6 +191,41 @@ def test_everything(url: str):
     test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user1_token, compare=post1,
          json=post1.edit(content=None, url='Custom url'))
 
+    print('Test user1 change content and url')
+    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user1_token, compare=post1,
+         json=post1.edit(content='Custom content 2', url='Custom url 2'))
+
     print('Test user2 edit post1 title')
     test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=403, token=user2_token,
          json=post1.edit(title='User2 title', apply=False))
+
+    print('Test get comments from post1 is list')
+    comments = test(get, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=200)
+    assert type(comments) is list
+
+    print('Test get comments from nonexistent post')
+    test(get, f'/resubs/{resub1.name}/posts/9999999999/comments/', status=404)
+
+    comment1 = Comment(author_username=user1.username, parent_resub_name=resub1.name, parent_post_id=post1.id)
+
+    print('Test create comment in post1 from user1')
+    test(post, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=201, token=user1_token, compare=comment1,
+         json=comment1.create)
+
+    comment1_copy = copy(comment1)
+
+    print('Test create same comment in post1 from user1')
+    test(post, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=201, token=user1_token,
+         compare=comment1_copy,
+         json=comment1_copy.create)
+
+    print('Test get comments in post1 has both comment1')
+    comments = test(get, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=200)
+    assert any(comment1.compare(c) for c in comments)
+    assert any(comment1_copy.compare(c) for c in comments)
+
+    comment2 = Comment(author_username=user2.username, parent_resub_name=resub1.name, parent_post_id=post1.id)
+
+    print('Test create comment in post1 as user2')
+    test(post, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=201, token=user2_token, compare=comment2,
+         json=comment2.create)
