@@ -5,6 +5,36 @@ from functools import partial
 random_string = partial(secrets.token_hex, 8)
 
 
+def property_to_dict(**fields):
+    @property
+    def create(self):
+        return {v: getattr(self, k) for k, v in fields.items()}
+
+    return create
+
+
+def method_edit(**editable_fields):
+    def edit(self, apply: bool = True, **fields):
+        if apply:
+            for k, v in editable_fields.items():
+                if v in fields:
+                    setattr(self, k, fields[v])
+
+        return fields
+
+    return edit
+
+
+def method_compare(**update):
+    def compare(self, json_object: dict):
+        for k, v in update.items():
+            setattr(self, k, json_object[v])
+
+        return all(v == json_object[k] for k, v in asdict(self).items() if k in json_object)
+
+    return compare
+
+
 @dataclass
 class User:
     username: str = field(default_factory=random_string)
@@ -12,21 +42,10 @@ class User:
     bio: str = None
     avatar_url: str = None
 
-    @property
-    def create(self):
-        return {'username': self.username, 'password': self.password}
-
+    create = property_to_dict(username='username', password='password')
     login = create
-
-    def edit(self, apply: bool = True, **fields):
-        if apply:
-            self.bio = fields.get('bio', self.bio)
-            self.avatar_url = fields.get('avatar_url', self.avatar_url)
-
-        return fields
-
-    def compare(self, json_object: dict):
-        return all(v == json_object[k] for k, v in asdict(self).items() if k in json_object)
+    edit = method_edit(bio='bio', avatar_url='avatar_url')
+    compare = method_compare()
 
 
 @dataclass
@@ -35,19 +54,9 @@ class Resub:
     name: str = field(default_factory=random_string)
     description: str = field(default_factory=random_string)
 
-    @property
-    def create(self):
-        return {'name': self.name, 'description': self.description}
-
-    def edit(self, apply: bool = True, **fields):
-        if apply:
-            self.description = fields.get('description', self.description)
-            self.owner_username = fields.get('new_owner_username', self.owner_username)
-
-        return fields
-
-    def compare(self, json_object: dict):
-        return all(v == json_object[k] for k, v in asdict(self).items() if k in json_object)
+    create = property_to_dict(name='name', description='description')
+    edit = method_edit(description='description', owner_username='new_owner_username')
+    compare = method_compare()
 
 
 @dataclass
@@ -59,18 +68,20 @@ class Post:
     content: str = None
     id: int = None
 
-    @property
-    def create(self):
-        return {'title': self.title, 'url': self.url, 'content': self.content}
+    create = property_to_dict(title='title', url='url', content='content')
+    edit = method_edit(title='title', url='url', content='content')
+    compare = method_compare(id='id')
 
-    def edit(self, apply: bool = True, **fields):
-        if apply:
-            self.title = fields.get('title', self.title)
-            self.url = fields.get('url', self.url)
-            self.content = fields.get('content', self.content)
 
-        return fields
+@dataclass
+class Comment:
+    author_username: str
+    parent_resub_name: str
+    parent_post_id: int
+    parent_comment_id: int = None
+    content: str = field(default_factory=random_string)
+    id: int = None
 
-    def compare(self, json_object: dict):
-        self.id = json_object.get('id')
-        return all(v == json_object[k] for k, v in asdict(self).items() if k in json_object)
+    create = property_to_dict(content='content')
+    edit = method_edit(content='content')
+    compare = method_compare(id='id')
