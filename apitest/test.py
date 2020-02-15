@@ -179,6 +179,10 @@ def test_everything(url: str):
     print('Test get second post1 in resub1')
     test(get, f'/resubs/{resub1.name}/posts/{post1_copy.id}', status=200, compare=post1_copy)
 
+    print('Test get user1 posts has post1')
+    posts = test(get, f'/users/{user1.username}/posts', status=200)
+    assert any(post1.compare(p) for p in posts)
+
     print('Test user1 edit post1 title')
     test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user1_token, compare=post1,
          json=post1.edit(title='Custom title'))
@@ -216,16 +220,42 @@ def test_everything(url: str):
 
     print('Test create same comment in post1 from user1')
     test(post, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=201, token=user1_token,
-         compare=comment1_copy,
-         json=comment1_copy.create)
+         compare=comment1_copy, json=comment1_copy.create)
 
     print('Test get comments in post1 has both comment1')
     comments = test(get, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=200)
     assert any(comment1.compare(c) for c in comments)
     assert any(comment1_copy.compare(c) for c in comments)
 
+    print('Test get user1 comments has comment1')
+    comments = test(get, f'/users/{user1.username}/comments', status=200)
+    assert any(comment1.compare(c) for c in comments)
+
     comment2 = Comment(author_username=user2.username, parent_resub_name=resub1.name, parent_post_id=post1.id)
 
     print('Test create comment in post1 as user2')
     test(post, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=201, token=user2_token, compare=comment2,
          json=comment2.create)
+
+    comment1_reply = Comment(author_username=user2.username, parent_resub_name=resub1.name, parent_post_id=post1.id,
+                             parent_comment_id=comment1.id)
+
+    print('Test create reply to comment1 as user2')
+    test(post, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=201, token=user2_token,
+         compare=comment1_reply, json=comment1_reply.create)
+
+    print('Test edit comment1 content as user1')
+    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=200, token=user1_token,
+         compare=comment1, json=comment1.edit(content='Custom content'))
+
+    # print('Test set comment1 content to null')
+    # test(patch, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=422, token=user1_token,
+    #     json=comment1.edit(content=None, apply=False))
+    # TODO: this test should not fail (currently 500 internal server error)
+    # A similar test should be made for resubs (description is required)
+
+    print('Test edit comment1 as user2')
+    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=403, token=user2_token,
+         json=comment1.edit(content='User2 content', apply=False))
+
+    # TODO: delete everything
