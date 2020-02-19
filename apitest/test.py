@@ -1,6 +1,6 @@
 from copy import copy
 
-from requests import get, post, patch
+from requests import get, post, patch, delete
 
 from apitest.schemas import User, Resub, Post, Comment
 
@@ -18,7 +18,8 @@ def test_everything(url: str):
         obj = r.json()
 
         if compare:
-            assert compare.compare(obj), f'{error_prefix} Failed object check:\nGot: {obj}\nExpected: {compare}'
+            assert compare.compare(obj, update=True), \
+                f'{error_prefix} Failed object check:\nGot: {obj}\nExpected: {compare}'
 
         # Do extra authorization tests when token is provided
         if token and not skip_token_test:
@@ -195,13 +196,17 @@ def test_everything(url: str):
     test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user1_token, compare=post1,
          json=post1.edit(content=None, url='Custom url'))
 
-    print('Test user1 change content and url')
+    print('Test user1 change post1 content and url')
     test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user1_token, compare=post1,
          json=post1.edit(content='Custom content 2', url='Custom url 2'))
 
     print('Test user2 edit post1 title')
     test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=403, token=user2_token,
          json=post1.edit(title='User2 title', apply=False))
+
+    print('Test user1 set post1 title to null')
+    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=422, token=user1_token,
+         json=post1.edit(title=None, apply=False))
 
     print('Test get comments from post1 is list')
     comments = test(get, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=200)
@@ -248,14 +253,51 @@ def test_everything(url: str):
     test(patch, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=200, token=user1_token,
          compare=comment1, json=comment1.edit(content='Custom content'))
 
-    # print('Test set comment1 content to null')
-    # test(patch, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=422, token=user1_token,
-    #     json=comment1.edit(content=None, apply=False))
-    # TODO: this test should not fail (currently 500 internal server error)
-    # A similar test should be made for resubs (description is required)
+    print('Test set comment1 content to null')
+    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=422, token=user1_token,
+         json=comment1.edit(content=None, apply=False))
 
     print('Test edit comment1 as user2')
     test(patch, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=403, token=user2_token,
          json=comment1.edit(content='User2 content', apply=False))
 
-    # TODO: delete everything
+    user3 = User()
+
+    print('Test create user3')
+    test(post, f'/users/', status=201, compare=user3, json=user3.create)
+
+    print('Test login user3')
+    user3_token = test(post, '/auth/token', status=200, data=user3.login)
+    assert 'access_token' in user3_token
+
+    print('Test delete comment1_reply as user3 (neither resub owner nor comment author)')
+    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1_reply.id}', status=403, token=user3_token)
+
+    print('Test delete comment1_reply as user2 (comment author and resub owner)')
+    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1_reply.id}', status=200, token=user2_token,
+         skip_token_test=True)
+
+    print('Test get comments in post1 no longer has comment1_reply')
+    comments = test(get, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=200)
+    assert not any(comment1_reply.compare(c) for c in comments)
+
+    print('Test delete comment1_copy as user2 (resub owner)')
+    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1_copy.id}', status=200, token=user2_token,
+         skip_token_test=True)
+
+    print('Test delete comment2 as user1 (neither resub owner nor comment author)')
+    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment2.id}', status=403, token=user1_token)
+
+    print('Test delete comment2 as user2 (comment author)')
+    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment2.id}', status=200, token=user2_token,
+         skip_token_test=True)
+
+    print('Test delete comment1 as user1 (comment author)')
+    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=200, token=user1_token,
+         skip_token_test=True)
+
+    print('Test get comments in post1 no longer has comment1, comment2 and comment1_copy')
+    comments = test(get, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=200)
+    assert not any(comment1.compare(c) for c in comments)
+    assert not any(comment2.compare(c) for c in comments)
+    assert not any(comment1_copy.compare(c) for c in comments)

@@ -25,10 +25,11 @@ def method_edit(**editable_fields):
     return edit
 
 
-def method_compare(**update):
-    def compare(self, json_object: dict):
-        for k, v in update.items():
-            setattr(self, k, json_object[v])
+def method_compare(**update_fields):
+    def compare(self, json_object: dict, update: bool = False):
+        if update:
+            for k, v in update_fields.items():
+                setattr(self, k, json_object[v])
 
         return all(v == json_object[k] for k, v in asdict(self).items() if k in json_object)
 
