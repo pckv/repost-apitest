@@ -39,7 +39,6 @@ def test_everything(url: str) -> TestStats:
             assert compare.compare(obj, update=True), \
                 f'{error_prefix} Failed object check:\nGot: {obj}\nExpected: {compare}'
 
-
         return obj
 
     # NOTE:
@@ -335,8 +334,21 @@ def test_everything(url: str) -> TestStats:
 
     print('Test get posts in resub1 no longer has post1, post2 and post1_copy')
     posts = test(get, f'/resubs/{resub1.name}/posts', status=200)
-    assert not (any(post1.compare(p) for p in posts))
-    assert not (any(post2.compare(p) for p in posts))
-    assert not (any(post1_copy.compare(p) for p in posts))
+    assert not any(post1.compare(p) for p in posts)
+    assert not any(post2.compare(p) for p in posts)
+    assert not any(post1_copy.compare(p) for p in posts)
+
+    print('Test delete resub1 as user1 (previous resub owner)')
+    test(delete, f'/resubs/{resub1.name}', status=403, token=user1_token)
+
+    print('Test delete resub1 as user2 (resub owner)')
+    test(delete, f'/resubs/{resub1.name}', status=200, token=user2_token)
+
+    print('Test get resub1 after deleting')
+    test(get, f'/resubs/{resub1.name}', status=404)
+
+    print('Test get resubs no longer has resub1')
+    resubs = test(get, f'/resubs/', status=200)
+    assert not any(resub1.compare(r) for r in resubs)
 
     return stats
