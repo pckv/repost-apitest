@@ -103,14 +103,14 @@ def test_everything(url: str) -> TestStats:
 
     print('Test resub1 in get resubs')
     resubs = test(get, '/resubs/', status=200)
-    assert any(resub1.compare(resub) for resub in resubs)
+    assert any(resub1.compare(r) for r in resubs)
 
     print('Test get resub1')
     test(get, f'/resubs/{resub1.name}', status=200, compare=resub1)
 
     print('Test get user1 resubs has resub1')
     resubs = test(get, f'/users/{user1.username}/resubs', status=200)
-    assert any(resub1.compare(resub) for resub in resubs)
+    assert any(resub1.compare(r) for r in resubs)
 
     print('Test edit nonexistent resub description as user1')
     test(patch, f'/resubs/{Resub(owner_username=user1.username).name}', status=404, token=user1_token,
@@ -137,6 +137,10 @@ def test_everything(url: str) -> TestStats:
     test(patch, f'/resubs/{resub1.name}', status=403, token=user2_token,
          json=resub1.edit(description='User2 description', apply=False))
 
+    print('Test get user2 resubs does not have resub1 before transfer ownership')
+    resubs = test(get, f'/users/{user2.username}/resubs', status=200)
+    assert not any(resub1.compare(r) for r in resubs)
+
     print('Test transfer resub1 ownership to user2')
     test(patch, f'/resubs/{resub1.name}', status=200, token=user1_token, compare=resub1,
          json=resub1.edit(new_owner_username=user2.username))
@@ -151,7 +155,7 @@ def test_everything(url: str) -> TestStats:
 
     print('Test get user2 resubs has resub1 when user2 is owner')
     resubs = test(get, f'/users/{user2.username}/resubs', status=200)
-    assert any(resub1.compare(resub) for resub in resubs)
+    assert any(resub1.compare(r) for r in resubs)
 
     print('Test get posts in resub1 is list')
     posts = test(get, f'/resubs/{resub1.name}/posts/', status=200)
@@ -289,27 +293,34 @@ def test_everything(url: str) -> TestStats:
     print('Test delete comment1_reply as user2 (comment author and resub owner)')
     test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1_reply.id}', status=200, token=user2_token)
 
-    print('Test get comments in post1 no longer has comment1_reply')
-    comments = test(get, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=200)
-    assert not any(comment1_reply.compare(c) for c in comments)
-
-    print('Test delete comment1_copy as user2 (resub owner)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1_copy.id}', status=200, token=user2_token)
-
     print('Test delete comment2 as user1 (neither resub owner nor comment author)')
     test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment2.id}', status=403, token=user1_token)
 
     print('Test delete comment2 as user2 (comment author)')
     test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment2.id}', status=200, token=user2_token)
 
+    print('Test get user2 comments no longer has comment2 and comment1_reply after deleting')
+    comments = test(get, f'/users/{user2.username}/comments', status=200)
+    assert not any(comment2.compare(c) for c in comments)
+    assert not any(comment1_reply.compare(c) for c in comments)
+
+    print('Test delete comment1_copy as user2 (resub owner)')
+    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1_copy.id}', status=200, token=user2_token)
+
     print('Test delete comment1 as user1 (comment author)')
     test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=200, token=user1_token)
 
-    print('Test get comments in post1 no longer has comment1, comment2 and comment1_copy')
+    print('Test get user1 comments no longer has comment1 and comment1_copy after deleting')
+    comments = test(get, f'/users/{user1.username}/comments', status=200)
+    assert not any(comment1.compare(c) for c in comments)
+    assert not any(comment1_copy.compare(c) for c in comments)
+
+    print('Test get comments in post1 no longer has comment1, comment2, comment1_copy and comment1_reply')
     comments = test(get, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=200)
     assert not any(comment1.compare(c) for c in comments)
     assert not any(comment2.compare(c) for c in comments)
     assert not any(comment1_copy.compare(c) for c in comments)
+    assert not any(comment1_reply.compare(c) for c in comments)
 
     print('Test delete post2 as user1 (neither resub owner nor post author')
     test(delete, f'/resubs/{resub1.name}/posts/{post2.id}', status=403, token=user1_token)
@@ -319,6 +330,10 @@ def test_everything(url: str) -> TestStats:
 
     print('Test get post2 after deleting')
     test(get, f'/resubs/{resub1.name}/posts/{post2.id}', status=404)
+
+    print('Test get user2 posts no longer has post2 after deleting')
+    posts = test(get, f'/users/{user2.username}/posts', status=200)
+    assert not any(post2.compare(p) for p in posts)
 
     print('Test delete post1 as user2 (resub owner)')
     test(delete, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user2_token)
@@ -331,6 +346,11 @@ def test_everything(url: str) -> TestStats:
 
     print('Test get post1_copy after deleting')
     test(get, f'/resubs/{resub1.name}/posts/{post1_copy.id}', status=404)
+
+    print('Test get user1 posts no longer has post1 and post1_copy after deleting')
+    posts = test(get, f'/users/{user1.username}/posts', status=200)
+    assert not any(post1.compare(p) for p in posts)
+    assert not any(post1_copy.compare(p) for p in posts)
 
     print('Test get posts in resub1 no longer has post1, post2 and post1_copy')
     posts = test(get, f'/resubs/{resub1.name}/posts', status=200)
@@ -349,6 +369,10 @@ def test_everything(url: str) -> TestStats:
 
     print('Test get resubs no longer has resub1')
     resubs = test(get, f'/resubs/', status=200)
+    assert not any(resub1.compare(r) for r in resubs)
+
+    print('Test get user2 resubs no longer has resub1 after deleting')
+    resubs = test(get, f'/users/{user2.username}/resubs', status=200)
     assert not any(resub1.compare(r) for r in resubs)
 
     return stats
