@@ -23,6 +23,14 @@ def test_everything(url: str) -> TestStats:
         if token:
             headers['Authorization'] = 'Bearer ' + token['access_token']
 
+        # Do extra authorization tests when token is provided
+        if token and not skip_token_test:
+            print('\tWithout authorization')
+            test(method, endpoint, status=401, skip_token_test=True, **kwargs)
+
+            print('\tWith invalid token')
+            test(method, endpoint, token={'access_token': 'not.a.token'}, status=400, skip_token_test=True, **kwargs)
+
         r = method(f'{url}/api{endpoint}', headers=headers, **kwargs)
         assert r.status_code == status, f'{error_prefix}\nGot: {r.status_code}\nExpected: {status}\nResponse: {r.text}'
         obj = r.json()
@@ -31,13 +39,6 @@ def test_everything(url: str) -> TestStats:
             assert compare.compare(obj, update=True), \
                 f'{error_prefix} Failed object check:\nGot: {obj}\nExpected: {compare}'
 
-        # Do extra authorization tests when token is provided
-        if token and not skip_token_test:
-            print('\tWithout authorization')
-            test(method, endpoint, status=401, skip_token_test=True, **kwargs)
-
-            print('\tWith invalid token')
-            test(method, endpoint, token={'access_token': 'not.a.token'}, status=400, skip_token_test=True, **kwargs)
 
         return obj
 
@@ -287,27 +288,23 @@ def test_everything(url: str) -> TestStats:
     test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1_reply.id}', status=403, token=user3_token)
 
     print('Test delete comment1_reply as user2 (comment author and resub owner)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1_reply.id}', status=200, token=user2_token,
-         skip_token_test=True)
+    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1_reply.id}', status=200, token=user2_token)
 
     print('Test get comments in post1 no longer has comment1_reply')
     comments = test(get, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=200)
     assert not any(comment1_reply.compare(c) for c in comments)
 
     print('Test delete comment1_copy as user2 (resub owner)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1_copy.id}', status=200, token=user2_token,
-         skip_token_test=True)
+    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1_copy.id}', status=200, token=user2_token)
 
     print('Test delete comment2 as user1 (neither resub owner nor comment author)')
     test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment2.id}', status=403, token=user1_token)
 
     print('Test delete comment2 as user2 (comment author)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment2.id}', status=200, token=user2_token,
-         skip_token_test=True)
+    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment2.id}', status=200, token=user2_token)
 
     print('Test delete comment1 as user1 (comment author)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=200, token=user1_token,
-         skip_token_test=True)
+    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=200, token=user1_token)
 
     print('Test get comments in post1 no longer has comment1, comment2 and comment1_copy')
     comments = test(get, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=200)
@@ -319,19 +316,19 @@ def test_everything(url: str) -> TestStats:
     test(delete, f'/resubs/{resub1.name}/posts/{post2.id}', status=403, token=user1_token)
 
     print('Test delete post2 as user2 (resub owner and post author)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post2.id}', status=200, token=user2_token, skip_token_test=True)
+    test(delete, f'/resubs/{resub1.name}/posts/{post2.id}', status=200, token=user2_token)
 
     print('Test get post2 after deleting')
     test(get, f'/resubs/{resub1.name}/posts/{post2.id}', status=404)
 
     print('Test delete post1 as user2 (resub owner)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user2_token, skip_token_test=True)
+    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user2_token)
 
     print('Test get post1 after deleting')
     test(get, f'/resubs/{resub1.name}/posts/{post1.id}', status=404)
 
     print('Test delete post1_copy as user1 (post author)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post1_copy.id}', status=200, token=user1_token, skip_token_test=True)
+    test(delete, f'/resubs/{resub1.name}/posts/{post1_copy.id}', status=200, token=user1_token)
 
     print('Test get post1_copy after deleting')
     test(get, f'/resubs/{resub1.name}/posts/{post1_copy.id}', status=404)
