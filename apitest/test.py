@@ -375,4 +375,22 @@ def test_everything(url: str) -> TestStats:
     resubs = test(get, f'/users/{user2.username}/resubs', status=200)
     assert not any(resub1.compare(r) for r in resubs)
 
+    def test_delete_user(user_model_name: str, user: User, user_token):
+        print(f'Test delete {user_model_name}')
+        test(delete, f'/users/me', status=200, token=user_token)
+
+        print(f'Test get {user_model_name} after deleting')
+        test(get, f'/users/{user.username}', status=404)
+
+        # TODO: should be 401
+        print(f'Test get current user with {user_model_name} token is unauthorized (test invalid token)')
+        test(get, f'/users/me', status=404, token=user_token)
+
+        print(f'Test login as {user_model_name} no longer possible')
+        test(post, f'/auth/token', status=401, data=user.login)
+
+    test_delete_user('user3', user3, user3_token)
+    test_delete_user('user2', user2, user2_token)
+    test_delete_user('user1', user1, user1_token)
+
     return stats
