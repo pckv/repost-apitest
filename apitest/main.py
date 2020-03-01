@@ -12,10 +12,12 @@ def main():
     print(f'Starting complete API test on base URL {args.url}')
     started = datetime.now()
 
-    test_everything(args.url)
+    stats = test_everything(args.url)
 
     elapsed = datetime.now() - started
-    print(f'Tests passed in {elapsed.total_seconds()} seconds')
+
+    print(f'\nExecuted {stats.count} tests')
+    print(f'Passed in {elapsed.total_seconds()} seconds')
 
 
 if __name__ == '__main__':

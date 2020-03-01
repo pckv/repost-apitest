@@ -1,12 +1,22 @@
 from copy import copy
+from dataclasses import dataclass
 
 from requests import get, post, patch, delete
 
 from apitest.schemas import User, Resub, Post, Comment
 
 
-def test_everything(url: str):
+@dataclass
+class TestStats:
+    count: int = 0
+
+
+def test_everything(url: str) -> TestStats:
+    """Perform all tests and return statistics when passed."""
+    stats = TestStats()
+
     def test(method, endpoint: str, *, token=None, status: int, compare=None, skip_token_test: bool = False, **kwargs):
+        stats.count += 1
         error_prefix = f'{method.__name__.upper()} {endpoint}'
 
         headers = {}
@@ -155,11 +165,17 @@ def test_everything(url: str):
     print('Test create post in resub1 as user1')
     test(post, f'/resubs/{resub1.name}/posts/', status=201, token=user1_token, compare=post1, json=post1.create)
 
+    print('Test get post1')
+    test(get, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, compare=post1)
+
     post1_copy = copy(post1)
 
     print('Test create same post in resub1 as user1')
     test(post, f'/resubs/{resub1.name}/posts/', status=201, token=user1_token, compare=post1_copy,
          json=post1_copy.create)
+
+    print('Test get post1_copy')
+    test(get, f'/resubs/{resub1.name}/posts/{post1_copy.id}', status=200, compare=post1_copy)
 
     print('Test get posts in resub1 has both post1')
     posts = test(get, f'/resubs/{resub1.name}/posts/', status=200)
@@ -171,14 +187,11 @@ def test_everything(url: str):
     print('Test create post in resub1 as user2')
     test(post, f'/resubs/{resub1.name}/posts/', status=201, token=user2_token, compare=post2, json=post2.create)
 
+    print('Test get post2')
+    test(get, f'/resubs/{resub1.name}/posts/{post2.id}', status=200, compare=post2)
+
     print('Test get nonexistent post in resub1')
     test(get, f'/resubs/{resub1.name}/posts/9999999999', status=404)
-
-    print('Test get post1 in resub1')
-    test(get, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, compare=post1)
-
-    print('Test get second post1 in resub1')
-    test(get, f'/resubs/{resub1.name}/posts/{post1_copy.id}', status=200, compare=post1_copy)
 
     print('Test get user1 posts has post1')
     posts = test(get, f'/users/{user1.username}/posts', status=200)
@@ -301,3 +314,32 @@ def test_everything(url: str):
     assert not any(comment1.compare(c) for c in comments)
     assert not any(comment2.compare(c) for c in comments)
     assert not any(comment1_copy.compare(c) for c in comments)
+
+    print('Test delete post2 as user1 (neither resub owner nor post author')
+    test(delete, f'/resubs/{resub1.name}/posts/{post2.id}', status=403, token=user1_token)
+
+    print('Test delete post2 as user2 (resub owner and post author)')
+    test(delete, f'/resubs/{resub1.name}/posts/{post2.id}', status=200, token=user2_token, skip_token_test=True)
+
+    print('Test get post2 after deleting')
+    test(get, f'/resubs/{resub1.name}/posts/{post2.id}', status=404)
+
+    print('Test delete post1 as user2 (resub owner)')
+    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user2_token, skip_token_test=True)
+
+    print('Test get post1 after deleting')
+    test(get, f'/resubs/{resub1.name}/posts/{post1.id}', status=404)
+
+    print('Test delete post1_copy as user1 (post author)')
+    test(delete, f'/resubs/{resub1.name}/posts/{post1_copy.id}', status=200, token=user1_token, skip_token_test=True)
+
+    print('Test get post1_copy after deleting')
+    test(get, f'/resubs/{resub1.name}/posts/{post1_copy.id}', status=404)
+
+    print('Test get posts in resub1 no longer has post1, post2 and post1_copy')
+    posts = test(get, f'/resubs/{resub1.name}/posts', status=200)
+    assert not (any(post1.compare(p) for p in posts))
+    assert not (any(post2.compare(p) for p in posts))
+    assert not (any(post1_copy.compare(p) for p in posts))
+
+    return stats
