@@ -382,9 +382,8 @@ def test_everything(url: str) -> TestStats:
         print(f'Test get {user_model_name} after deleting')
         test(get, f'/users/{user.username}', status=404)
 
-        # TODO: should be 401
         print(f'Test get current user with {user_model_name} token is unauthorized (test invalid token)')
-        test(get, f'/users/me', status=404, token=user_token)
+        test(get, f'/users/me', status=401, token=user_token)
 
         print(f'Test login as {user_model_name} no longer possible')
         test(post, f'/auth/token', status=401, data=user.login)
