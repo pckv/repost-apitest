@@ -1,5 +1,7 @@
+import random
 from copy import copy
 from dataclasses import dataclass
+from typing import Union
 
 from requests import get, post, patch, delete
 
@@ -47,6 +49,8 @@ def test_everything(url: str) -> TestStats:
     # posts without the / to the endpoint with it, but future behaviour
     # should perhaps be considered to allow calls to endpoints with no
     # trailing /
+
+    random.seed()
 
     user1 = User()
 
@@ -225,6 +229,38 @@ def test_everything(url: str) -> TestStats:
     test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=422, token=user1_token,
          json=post1.edit(title=None, apply=False))
 
+    def test_vote_entity(path: str, entity_name: str, entity: Union[Post, Comment]):
+        print(f'Test user1 vote 0 {entity_name}')
+        test(patch, f'{path}/vote/0', status=200, token=user1_token, compare=entity)
+
+        print(f'Test user1 downvote {entity_name}')
+        entity.votes = -1
+        test(patch, f'{path}/vote/-1', status=200, token=user1_token, compare=entity)
+
+        print(f'Test user1 downvote {entity_name} again')
+        test(patch, f'{path}/vote/-1', status=200, token=user1_token, compare=entity)
+
+        print(f'Test user2 downvote {entity_name}')
+        entity.votes = -2
+        test(patch, f'{path}/vote/-1', status=200, token=user2_token, compare=entity)
+
+        print(f'Test user1 upvote {entity_name}')
+        entity.votes = 0
+        test(patch, f'{path}/vote/1', status=200, token=user1_token, compare=entity)
+
+        print(f'Test user2 vote 0 {entity_name}')
+        entity.votes = 1
+        test(patch, f'{path}/vote/0', status=200, token=user2_token, compare=entity)
+
+        print(f'Test user2 vote 1 {entity_name}')
+        entity.votes = 2
+        test(patch, f'{path}/vote/1', status=200, token=user2_token, compare=entity)
+
+    test_vote_entity(f'/resubs/{resub1.name}/posts/{post1.id}', 'post1', post1)
+
+    print('Test get post1 has correct votes')
+    test(get, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, compare=post1)
+
     print('Test get comments from post1 is list')
     comments = test(get, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=200)
     assert type(comments) is list
@@ -250,7 +286,7 @@ def test_everything(url: str) -> TestStats:
     assert any(comment1_copy.compare(c) for c in comments)
 
     print('Test get user1 comments has comment1')
-    comments = test(get, f'/users/{user1.username}/comments', status=200)
+    comments = test(get, f'/users/{user1.username}/comments/', status=200)
     assert any(comment1.compare(c) for c in comments)
 
     comment2 = Comment(author_username=user2.username, parent_resub_name=resub1.name, parent_post_id=post1.id)
@@ -277,6 +313,12 @@ def test_everything(url: str) -> TestStats:
     print('Test edit comment1 as user2')
     test(patch, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=403, token=user2_token,
          json=comment1.edit(content='User2 content', apply=False))
+
+    test_vote_entity(f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', 'comment1', comment1)
+
+    print('Test get comemnts in post1 has comment1 with correct votes')
+    comments = test(get, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=200)
+    assert any(comment1.compare(c) for c in comments)
 
     user3 = User()
 

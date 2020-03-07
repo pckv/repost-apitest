@@ -68,6 +68,7 @@ class Post:
     url: str = None
     content: str = None
     id: int = None
+    votes: int = 0
 
     create = property_to_dict(title='title', url='url', content='content')
     edit = method_edit(title='title', url='url', content='content')
@@ -82,6 +83,7 @@ class Comment:
     parent_comment_id: int = None
     content: str = field(default_factory=random_string)
     id: int = None
+    votes: int = 0
 
     create = property_to_dict(content='content')
     edit = method_edit(content='content')
