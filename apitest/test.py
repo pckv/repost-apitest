@@ -174,7 +174,7 @@ def test_everything(url: str) -> TestStats:
     test(post, f'/resubs/{resub1.name}/posts/', status=201, token=user1_token, compare=post1, json=post1.create)
 
     print('Test get post1')
-    test(get, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, compare=post1)
+    test(get, f'/posts/{post1.id}', status=200, compare=post1)
 
     post1_copy = copy(post1)
 
@@ -183,7 +183,7 @@ def test_everything(url: str) -> TestStats:
          json=post1_copy.create)
 
     print('Test get post1_copy')
-    test(get, f'/resubs/{resub1.name}/posts/{post1_copy.id}', status=200, compare=post1_copy)
+    test(get, f'/posts/{post1_copy.id}', status=200, compare=post1_copy)
 
     print('Test get posts in resub1 has both post1')
     posts = test(get, f'/resubs/{resub1.name}/posts/', status=200)
@@ -196,7 +196,7 @@ def test_everything(url: str) -> TestStats:
     test(post, f'/resubs/{resub1.name}/posts/', status=201, token=user2_token, compare=post2, json=post2.create)
 
     print('Test get post2')
-    test(get, f'/resubs/{resub1.name}/posts/{post2.id}', status=200, compare=post2)
+    test(get, f'/posts/{post2.id}', status=200, compare=post2)
 
     print('Test get nonexistent post in resub1')
     test(get, f'/resubs/{resub1.name}/posts/9999999999', status=404)
@@ -206,27 +206,27 @@ def test_everything(url: str) -> TestStats:
     assert any(post1.compare(p) for p in posts)
 
     print('Test user1 edit post1 title')
-    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user1_token, compare=post1,
+    test(patch, f'/posts/{post1.id}', status=200, token=user1_token, compare=post1,
          json=post1.edit(title='Custom title'))
 
     print('Test user1 add content to post1')
-    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user1_token, compare=post1,
+    test(patch, f'/posts/{post1.id}', status=200, token=user1_token, compare=post1,
          json=post1.edit(content='Custom content'))
 
     print('Test user1 add url to post1 and remove content')
-    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user1_token, compare=post1,
+    test(patch, f'/posts/{post1.id}', status=200, token=user1_token, compare=post1,
          json=post1.edit(content=None, url='Custom url'))
 
     print('Test user1 change post1 content and url')
-    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user1_token, compare=post1,
+    test(patch, f'/posts/{post1.id}', status=200, token=user1_token, compare=post1,
          json=post1.edit(content='Custom content 2', url='Custom url 2'))
 
     print('Test user2 edit post1 title')
-    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=403, token=user2_token,
+    test(patch, f'/posts/{post1.id}', status=403, token=user2_token,
          json=post1.edit(title='User2 title', apply=False))
 
     print('Test user1 set post1 title to null')
-    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}', status=422, token=user1_token,
+    test(patch, f'/posts/{post1.id}', status=422, token=user1_token,
          json=post1.edit(title=None, apply=False))
 
     def test_vote_entity(path: str, entity_name: str, entity: Union[Post, Comment]):
@@ -256,13 +256,13 @@ def test_everything(url: str) -> TestStats:
         entity.votes = 2
         test(patch, f'{path}/vote/1', status=200, token=user2_token, compare=entity)
 
-    test_vote_entity(f'/resubs/{resub1.name}/posts/{post1.id}', 'post1', post1)
+    test_vote_entity(f'/posts/{post1.id}', 'post1', post1)
 
     print('Test get post1 has correct votes')
-    test(get, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, compare=post1)
+    test(get, f'/posts/{post1.id}', status=200, compare=post1)
 
     print('Test get comments from post1 is list')
-    comments = test(get, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=200)
+    comments = test(get, f'/posts/{post1.id}/comments/', status=200)
     assert type(comments) is list
 
     print('Test get comments from nonexistent post')
@@ -271,17 +271,17 @@ def test_everything(url: str) -> TestStats:
     comment1 = Comment(author_username=user1.username, parent_resub_name=resub1.name, parent_post_id=post1.id)
 
     print('Test create comment in post1 from user1')
-    test(post, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=201, token=user1_token, compare=comment1,
+    test(post, f'/posts/{post1.id}/comments/', status=201, token=user1_token, compare=comment1,
          json=comment1.create)
 
     comment1_copy = copy(comment1)
 
     print('Test create same comment in post1 from user1')
-    test(post, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=201, token=user1_token,
+    test(post, f'/posts/{post1.id}/comments/', status=201, token=user1_token,
          compare=comment1_copy, json=comment1_copy.create)
 
     print('Test get comments in post1 has both comment1')
-    comments = test(get, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=200)
+    comments = test(get, f'/posts/{post1.id}/comments/', status=200)
     assert any(comment1.compare(c) for c in comments)
     assert any(comment1_copy.compare(c) for c in comments)
 
@@ -292,32 +292,32 @@ def test_everything(url: str) -> TestStats:
     comment2 = Comment(author_username=user2.username, parent_resub_name=resub1.name, parent_post_id=post1.id)
 
     print('Test create comment in post1 as user2')
-    test(post, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=201, token=user2_token, compare=comment2,
+    test(post, f'/posts/{post1.id}/comments/', status=201, token=user2_token, compare=comment2,
          json=comment2.create)
 
     comment1_reply = Comment(author_username=user2.username, parent_resub_name=resub1.name, parent_post_id=post1.id,
                              parent_comment_id=comment1.id)
 
     print('Test create reply to comment1 as user2')
-    test(post, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=201, token=user2_token,
+    test(post, f'/comments/{comment1.id}', status=201, token=user2_token,
          compare=comment1_reply, json=comment1_reply.create)
 
     print('Test edit comment1 content as user1')
-    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=200, token=user1_token,
+    test(patch, f'/comments/{comment1.id}', status=200, token=user1_token,
          compare=comment1, json=comment1.edit(content='Custom content'))
 
     print('Test set comment1 content to null')
-    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=422, token=user1_token,
+    test(patch, f'/comments/{comment1.id}', status=422, token=user1_token,
          json=comment1.edit(content=None, apply=False))
 
     print('Test edit comment1 as user2')
-    test(patch, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=403, token=user2_token,
+    test(patch, f'/comments/{comment1.id}', status=403, token=user2_token,
          json=comment1.edit(content='User2 content', apply=False))
 
-    test_vote_entity(f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', 'comment1', comment1)
+    test_vote_entity(f'/comments/{comment1.id}', 'comment1', comment1)
 
     print('Test get comemnts in post1 has comment1 with correct votes')
-    comments = test(get, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=200)
+    comments = test(get, f'/posts/{post1.id}/comments/', status=200)
     assert any(comment1.compare(c) for c in comments)
 
     user3 = User()
@@ -330,16 +330,16 @@ def test_everything(url: str) -> TestStats:
     assert 'access_token' in user3_token
 
     print('Test delete comment1_reply as user3 (neither resub owner nor comment author)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1_reply.id}', status=403, token=user3_token)
+    test(delete, f'/comments/{comment1_reply.id}', status=403, token=user3_token)
 
     print('Test delete comment1_reply as user2 (comment author and resub owner)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1_reply.id}', status=200, token=user2_token)
+    test(delete, f'/comments/{comment1_reply.id}', status=200, token=user2_token)
 
     print('Test delete comment2 as user1 (neither resub owner nor comment author)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment2.id}', status=403, token=user1_token)
+    test(delete, f'/comments/{comment2.id}', status=403, token=user1_token)
 
     print('Test delete comment2 as user2 (comment author)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment2.id}', status=200, token=user2_token)
+    test(delete, f'/comments/{comment2.id}', status=200, token=user2_token)
 
     print('Test get user2 comments no longer has comment2 and comment1_reply after deleting')
     comments = test(get, f'/users/{user2.username}/comments', status=200)
@@ -347,10 +347,10 @@ def test_everything(url: str) -> TestStats:
     assert not any(comment1_reply.compare(c) for c in comments)
 
     print('Test delete comment1_copy as user2 (resub owner)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1_copy.id}', status=200, token=user2_token)
+    test(delete, f'/comments/{comment1_copy.id}', status=200, token=user2_token)
 
     print('Test delete comment1 as user1 (comment author)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}/comments/{comment1.id}', status=200, token=user1_token)
+    test(delete, f'/comments/{comment1.id}', status=200, token=user1_token)
 
     print('Test get user1 comments no longer has comment1 and comment1_copy after deleting')
     comments = test(get, f'/users/{user1.username}/comments', status=200)
@@ -358,36 +358,36 @@ def test_everything(url: str) -> TestStats:
     assert not any(comment1_copy.compare(c) for c in comments)
 
     print('Test get comments in post1 no longer has comment1, comment2, comment1_copy and comment1_reply')
-    comments = test(get, f'/resubs/{resub1.name}/posts/{post1.id}/comments/', status=200)
+    comments = test(get, f'/posts/{post1.id}/comments/', status=200)
     assert not any(comment1.compare(c) for c in comments)
     assert not any(comment2.compare(c) for c in comments)
     assert not any(comment1_copy.compare(c) for c in comments)
     assert not any(comment1_reply.compare(c) for c in comments)
 
     print('Test delete post2 as user1 (neither resub owner nor post author')
-    test(delete, f'/resubs/{resub1.name}/posts/{post2.id}', status=403, token=user1_token)
+    test(delete, f'/posts/{post2.id}', status=403, token=user1_token)
 
     print('Test delete post2 as user2 (resub owner and post author)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post2.id}', status=200, token=user2_token)
+    test(delete, f'/posts/{post2.id}', status=200, token=user2_token)
 
     print('Test get post2 after deleting')
-    test(get, f'/resubs/{resub1.name}/posts/{post2.id}', status=404)
+    test(get, f'/posts/{post2.id}', status=404)
 
     print('Test get user2 posts no longer has post2 after deleting')
     posts = test(get, f'/users/{user2.username}/posts', status=200)
     assert not any(post2.compare(p) for p in posts)
 
     print('Test delete post1 as user2 (resub owner)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post1.id}', status=200, token=user2_token)
+    test(delete, f'/posts/{post1.id}', status=200, token=user2_token)
 
     print('Test get post1 after deleting')
-    test(get, f'/resubs/{resub1.name}/posts/{post1.id}', status=404)
+    test(get, f'/posts/{post1.id}', status=404)
 
     print('Test delete post1_copy as user1 (post author)')
-    test(delete, f'/resubs/{resub1.name}/posts/{post1_copy.id}', status=200, token=user1_token)
+    test(delete, f'/posts/{post1_copy.id}', status=200, token=user1_token)
 
     print('Test get post1_copy after deleting')
-    test(get, f'/resubs/{resub1.name}/posts/{post1_copy.id}', status=404)
+    test(get, f'/posts/{post1_copy.id}', status=404)
 
     print('Test get user1 posts no longer has post1 and post1_copy after deleting')
     posts = test(get, f'/users/{user1.username}/posts', status=200)
