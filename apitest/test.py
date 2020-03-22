@@ -28,6 +28,9 @@ def test_everything(url: str) -> TestStats:
         if token:
             headers['Authorization'] = 'Bearer ' + token['access_token']
 
+        if method == patch:
+            headers['content-type'] = 'application/patch+json'
+
         # Do extra authorization tests when token is provided
         if token and not skip_token_test:
             print('\tWithout authorization')
