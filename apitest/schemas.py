@@ -44,9 +44,19 @@ class User:
     avatar_url: str = None
 
     create = property_to_dict(username='username', password='password')
-    login = create
     edit = method_edit(bio='bio', avatar_url='avatar_url')
     compare = method_compare()
+
+    @property
+    def login(self):
+        return {
+            'grant_type': 'password',
+            'username': self.username,
+            'password': self.password,
+            'client_id': 'client',
+            'client_secret': 'secret',
+            'scope': 'user'
+        }
 
 
 @dataclass
