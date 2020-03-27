@@ -92,8 +92,7 @@ def test_everything(url: str) -> TestStats:
     test(patch, '/users/me', token=user1_token, status=200, compare=user1, json=user1.edit(bio='Custom bio'))
 
     print('Test edit current user avatar_url only')
-    test(patch, '/users/me', token=user1_token, status=200, compare=user1,
-         json=user1.edit(avatar_url='Custom url'))
+    test(patch, '/users/me', token=user1_token, status=200, compare=user1, json=user1.edit(avatar_url='Custom url'))
 
     print('Test edit current user bio and avatar_url')
     test(patch, '/users/me', token=user1_token, status=200, compare=user1,
@@ -231,12 +230,10 @@ def test_everything(url: str) -> TestStats:
          json=post1.edit(content='Custom content 2', url='Custom url 2'))
 
     print('Test user2 edit post1 title')
-    test(patch, f'/posts/{post1.id}', status=403, token=user2_token,
-         json=post1.edit(title='User2 title', apply=False))
+    test(patch, f'/posts/{post1.id}', status=403, token=user2_token, json=post1.edit(title='User2 title', apply=False))
 
     print('Test user1 set post1 title to null')
-    test(patch, f'/posts/{post1.id}', status=422, token=user1_token,
-         json=post1.edit(title=None, apply=False))
+    test(patch, f'/posts/{post1.id}', status=422, token=user1_token, json=post1.edit(title=None, apply=False))
 
     def test_vote_entity(path: str, entity_name: str, entity: Union[Post, Comment]):
         print(f'Test user1 vote 0 {entity_name}')
@@ -280,14 +277,13 @@ def test_everything(url: str) -> TestStats:
     comment1 = Comment(author_username=user1.username, parent_resub_name=resub1.name, parent_post_id=post1.id)
 
     print('Test create comment in post1 from user1')
-    test(post, f'/posts/{post1.id}/comments/', status=201, token=user1_token, compare=comment1,
-         json=comment1.create)
+    test(post, f'/posts/{post1.id}/comments/', status=201, token=user1_token, compare=comment1, json=comment1.create)
 
     comment1_copy = copy(comment1)
 
     print('Test create same comment in post1 from user1')
-    test(post, f'/posts/{post1.id}/comments/', status=201, token=user1_token,
-         compare=comment1_copy, json=comment1_copy.create)
+    test(post, f'/posts/{post1.id}/comments/', status=201, token=user1_token, compare=comment1_copy,
+         json=comment1_copy.create)
 
     print('Test get comments in post1 has both comment1')
     comments = test(get, f'/posts/{post1.id}/comments/', status=200)
@@ -301,19 +297,18 @@ def test_everything(url: str) -> TestStats:
     comment2 = Comment(author_username=user2.username, parent_resub_name=resub1.name, parent_post_id=post1.id)
 
     print('Test create comment in post1 as user2')
-    test(post, f'/posts/{post1.id}/comments/', status=201, token=user2_token, compare=comment2,
-         json=comment2.create)
+    test(post, f'/posts/{post1.id}/comments/', status=201, token=user2_token, compare=comment2, json=comment2.create)
 
     comment1_reply = Comment(author_username=user2.username, parent_resub_name=resub1.name, parent_post_id=post1.id,
                              parent_comment_id=comment1.id)
 
     print('Test create reply to comment1 as user2')
-    test(post, f'/comments/{comment1.id}', status=201, token=user2_token,
-         compare=comment1_reply, json=comment1_reply.create)
+    test(post, f'/comments/{comment1.id}', status=201, token=user2_token, compare=comment1_reply,
+         json=comment1_reply.create)
 
     print('Test edit comment1 content as user1')
-    test(patch, f'/comments/{comment1.id}', status=200, token=user1_token,
-         compare=comment1, json=comment1.edit(content='Custom content'))
+    test(patch, f'/comments/{comment1.id}', status=200, token=user1_token, compare=comment1,
+         json=comment1.edit(content='Custom content'))
 
     print('Test set comment1 content to null')
     test(patch, f'/comments/{comment1.id}', status=422, token=user1_token,
