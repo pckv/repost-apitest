@@ -343,13 +343,13 @@ def test_everything(url: str) -> TestStats:
     test(delete, f'/comments/{comment1_reply.id}', status=403, token=user3_token)
 
     print('Test delete comment1_reply as user2 (comment author and resub owner)')
-    test(delete, f'/comments/{comment1_reply.id}', status=200, token=user2_token)
+    test(delete, f'/comments/{comment1_reply.id}', status=204, token=user2_token)
 
     print('Test delete comment2 as user1 (neither resub owner nor comment author)')
     test(delete, f'/comments/{comment2.id}', status=403, token=user1_token)
 
     print('Test delete comment2 as user2 (comment author)')
-    test(delete, f'/comments/{comment2.id}', status=200, token=user2_token)
+    test(delete, f'/comments/{comment2.id}', status=204, token=user2_token)
 
     print('Test get user2 comments no longer has comment2 and comment1_reply after deleting')
     comments = test(get, f'/users/{user2.username}/comments', status=200)
@@ -357,10 +357,10 @@ def test_everything(url: str) -> TestStats:
     assert not any(comment1_reply.compare(c) for c in comments)
 
     print('Test delete comment1_copy as user2 (resub owner)')
-    test(delete, f'/comments/{comment1_copy.id}', status=200, token=user2_token)
+    test(delete, f'/comments/{comment1_copy.id}', status=204, token=user2_token)
 
     print('Test delete comment1 as user1 (comment author)')
-    test(delete, f'/comments/{comment1.id}', status=200, token=user1_token)
+    test(delete, f'/comments/{comment1.id}', status=204, token=user1_token)
 
     print('Test get user1 comments no longer has comment1 and comment1_copy after deleting')
     comments = test(get, f'/users/{user1.username}/comments', status=200)
@@ -378,7 +378,7 @@ def test_everything(url: str) -> TestStats:
     test(delete, f'/posts/{post2.id}', status=403, token=user1_token)
 
     print('Test delete post2 as user2 (resub owner and post author)')
-    test(delete, f'/posts/{post2.id}', status=200, token=user2_token)
+    test(delete, f'/posts/{post2.id}', status=204, token=user2_token)
 
     print('Test get post2 after deleting')
     test(get, f'/posts/{post2.id}', status=404)
@@ -388,13 +388,13 @@ def test_everything(url: str) -> TestStats:
     assert not any(post2.compare(p) for p in posts)
 
     print('Test delete post1 as user2 (resub owner)')
-    test(delete, f'/posts/{post1.id}', status=200, token=user2_token)
+    test(delete, f'/posts/{post1.id}', status=204, token=user2_token)
 
     print('Test get post1 after deleting')
     test(get, f'/posts/{post1.id}', status=404)
 
     print('Test delete post1_copy as user1 (post author)')
-    test(delete, f'/posts/{post1_copy.id}', status=200, token=user1_token)
+    test(delete, f'/posts/{post1_copy.id}', status=204, token=user1_token)
 
     print('Test get post1_copy after deleting')
     test(get, f'/posts/{post1_copy.id}', status=404)
@@ -414,7 +414,7 @@ def test_everything(url: str) -> TestStats:
     test(delete, f'/resubs/{resub1.name}', status=403, token=user1_token)
 
     print('Test delete resub1 as user2 (resub owner)')
-    test(delete, f'/resubs/{resub1.name}', status=200, token=user2_token)
+    test(delete, f'/resubs/{resub1.name}', status=204, token=user2_token)
 
     print('Test get resub1 after deleting')
     test(get, f'/resubs/{resub1.name}', status=404)
@@ -429,7 +429,7 @@ def test_everything(url: str) -> TestStats:
 
     def test_delete_user(user_model_name: str, user: User, user_token):
         print(f'Test delete {user_model_name}')
-        test(delete, f'/users/me', status=200, token=user_token)
+        test(delete, f'/users/me', status=204, token=user_token)
 
         print(f'Test get {user_model_name} after deleting')
         test(get, f'/users/{user.username}', status=404)
