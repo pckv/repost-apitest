@@ -41,11 +41,14 @@ def test_everything(url: str) -> TestStats:
 
         r = method(f'{url}/api{endpoint}', headers=headers, **kwargs)
         assert r.status_code == status, f'{error_prefix}\nGot: {r.status_code}\nExpected: {status}\nResponse: {r.text}'
+        if r.status_code >= 300 or r.status_code == 204:
+            return
+
         obj = r.json()
 
         if compare:
-            assert compare.compare(obj, update=True), \
-                f'{error_prefix} Failed object check:\nGot: {obj}\nExpected: {compare}'
+            assert compare.compare(obj,
+                                   update=True), f'{error_prefix} Failed object check:\nGot: {obj}\nExpected: {compare}'
 
         return obj
 
