@@ -236,21 +236,27 @@ def test_everything(url: str) -> TestStats:
     test(patch, f'/posts/{post1.id}', status=422, token=user1_token, json=post1.edit(title=None, apply=False))
 
     def test_vote_entity(path: str, entity_name: str, entity: Union[Post, Comment]):
+        print(f'Test user1 vote -2 {entity_name}')
+        test(patch, f'{path}/vote/-2', status=422, token=user1_token)
+
+        print(f'Test user1 vote 2 {entity_name}')
+        test(patch, f'{path}/vote/2', status=422, token=user1_token)
+
         print(f'Test user1 vote 0 {entity_name}')
         test(patch, f'{path}/vote/0', status=200, token=user1_token, compare=entity)
 
-        print(f'Test user1 downvote {entity_name}')
+        print(f'Test user1 vote -1 {entity_name}')
         entity.votes = -1
         test(patch, f'{path}/vote/-1', status=200, token=user1_token, compare=entity)
 
-        print(f'Test user1 downvote {entity_name} again')
+        print(f'Test user1 vote -1 {entity_name} again')
         test(patch, f'{path}/vote/-1', status=200, token=user1_token, compare=entity)
 
-        print(f'Test user2 downvote {entity_name}')
+        print(f'Test user2 vote -1 {entity_name}')
         entity.votes = -2
         test(patch, f'{path}/vote/-1', status=200, token=user2_token, compare=entity)
 
-        print(f'Test user1 upvote {entity_name}')
+        print(f'Test user1 vote 1 {entity_name}')
         entity.votes = 0
         test(patch, f'{path}/vote/1', status=200, token=user1_token, compare=entity)
 
