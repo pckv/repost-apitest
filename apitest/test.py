@@ -4,11 +4,8 @@ from dataclasses import dataclass
 from typing import Union
 
 from requests import get, post, patch, delete
-from requests.auth import HTTPBasicAuth
 
 from apitest.schemas import User, Resub, Post, Comment
-
-server_auth = HTTPBasicAuth('client', 'secret')
 
 
 @dataclass
@@ -73,13 +70,13 @@ def test_everything(url: str) -> TestStats:
     test(post, '/users/', status=400, json=user1.create)
 
     print('Test login nonexistent user')
-    test(post, '/auth/token', status=400, data=User().login, auth=server_auth)
+    test(post, '/auth/token', status=400, data=User().login)
 
     print('Test login invalid user1 password')
-    test(post, '/auth/token', status=400, data=User(username=user1.username).login, auth=server_auth)
+    test(post, '/auth/token', status=400, data=User(username=user1.username).login)
 
     print('Test login user1')
-    user1_token = test(post, '/auth/token', status=200, data=user1.login, auth=server_auth)
+    user1_token = test(post, '/auth/token', status=200, data=user1.login)
     assert 'access_token' in user1_token
 
     print('Test get user1')
@@ -142,7 +139,7 @@ def test_everything(url: str) -> TestStats:
     test(post, '/users/', status=201, compare=user2, json=user2.create)
 
     print('Test login user2')
-    user2_token = test(post, '/auth/token', status=200, data=user2.login, auth=server_auth)
+    user2_token = test(post, '/auth/token', status=200, data=user2.login)
     assert 'access_token' in user2_token
 
     print('Test edit resub1 description as user2')
@@ -336,7 +333,7 @@ def test_everything(url: str) -> TestStats:
     test(post, f'/users/', status=201, compare=user3, json=user3.create)
 
     print('Test login user3')
-    user3_token = test(post, '/auth/token', status=200, data=user3.login, auth=server_auth)
+    user3_token = test(post, '/auth/token', status=200, data=user3.login)
     assert 'access_token' in user3_token
 
     print('Test delete comment1_reply as user3 (neither resub owner nor comment author)')
@@ -438,7 +435,7 @@ def test_everything(url: str) -> TestStats:
         test(get, f'/users/me', status=401, token=user_token)
 
         print(f'Test login as {user_model_name} no longer possible')
-        test(post, f'/auth/token', status=400, data=user.login, auth=server_auth)
+        test(post, f'/auth/token', status=400, data=user.login)
 
     test_delete_user('user3', user3, user3_token)
     test_delete_user('user2', user2, user2_token)

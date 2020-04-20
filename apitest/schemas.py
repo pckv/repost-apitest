@@ -53,8 +53,7 @@ class User:
             'grant_type': 'password',
             'username': self.username,
             'password': self.password,
-            'client_id': 'client',
-            'client_secret': 'secret',
+            'client_id': 'repost',
             'scope': 'user'
         }
 
