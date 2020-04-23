@@ -27,7 +27,11 @@ def test_multiple(url: str, runs: int):
 
     print(f'\nStats:\n'
           f'\tmean: {statistics.mean(elapsed_seconds)}\n'
-          f'\tmedian: {statistics.median(elapsed_seconds)}\n')
+          f'\tmedian: {statistics.median(elapsed_seconds)}\n'
+          f'\tstdev: {statistics.stdev(elapsed_seconds)}\n'
+          f'\tvariance: {statistics.variance(elapsed_seconds)}\n'
+          f'\tpopulation stdev: {statistics.pstdev(elapsed_seconds)}\n'
+          f'\tpopulation variance: {statistics.pvariance(elapsed_seconds)}')
 
 
 def main():
